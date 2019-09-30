@@ -19,12 +19,12 @@ setup(
 	author = "Jürgen Knauth",
 	author_email = "pubsrc@binary-overflow.de",
 	classifiers = [
-		"Development Status :: 3 - Alpha",
+		"Development Status :: 4 - Beta",
 		"License :: OSI Approved :: Apache Software License",
 		"Topic :: Software Development :: Testing",
 	],
 	description = "As the python exception API is quite a bit obscure this python module wraps around python exceptions to provide a clean interface for analysis and logging purposes.",
-	download_url = "https://github.com/jkpubsrc/......../tarball/0.2019.9.27",
+	download_url = "https://github.com/jkpubsrc/......../tarball/0.2019.9.30",
 	include_package_data = False,
 	install_requires = [
 	],
@@ -38,7 +38,7 @@ setup(
 		"jk_exceptionhelper",
 	],
 	url = "https://github.com/jkpubsrc/........",
-	version = "0.2019.9.27",
+	version = "0.2019.9.30",
 	zip_safe = False,
 	long_description = readme(),
 	long_description_content_type="text/markdown",

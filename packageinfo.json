@@ -9,7 +9,7 @@
 			"debugging"
 		],
 		"license": "Apache 2.0",
-		"development_status": "alpha",
+		"development_status": "beta",
 		"authors": [
 			{
 				"name": "Jürgen Knauth",
