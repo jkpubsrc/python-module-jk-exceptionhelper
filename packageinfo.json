@@ -1,7 +1,7 @@
 {
 	"language": "python3",
 	"name": "jk_exceptionhelper",
-	"version": "0.2019.9.30",
+	"version": "0.2019.10.8",
 	"meta": {
 		"description": "As the python exception API is quite a bit obscure this python module wraps around python exceptions to provide a clean interface for analysis and logging purposes.",
 		"keywords": [

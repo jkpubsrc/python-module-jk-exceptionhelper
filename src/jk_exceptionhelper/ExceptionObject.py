@@ -30,6 +30,31 @@ class ExceptionObject(object):
 		self.nestedException = nestedException
 	#
 
+	def toStrList(self):
+		outStrList = []
+
+		e = self
+		indent = ""
+		while True:
+			outStrList.append(indent + e.exceptionClassName)
+			if e.exceptionTextHR is not None:
+				outStrList.append(indent + ": exceptionTextHR:")
+				outStrList.append(indent + ":\t" + e.exceptionTextHR)
+			if e.stackTrace is not None:
+				outStrList.append(indent + ": stackTrace:")
+				for item in reversed(e.stackTrace):
+					outStrList.append(indent + ":\t" + str(item))
+			if e.nestedException:
+				e = e.nestedException
+				outStrList.append(indent + "\- nestedException:")
+				indent += "\t"
+			else:
+				outStrList.append(indent + "\-")
+				break
+
+		return outStrList
+	#
+
 	def dump(self):
 		e = self
 		indent = ""
