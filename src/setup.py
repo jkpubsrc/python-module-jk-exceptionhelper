@@ -24,7 +24,7 @@ setup(
 		"Topic :: Software Development :: Testing",
 	],
 	description = "As the python exception API is quite a bit obscure this python module wraps around python exceptions to provide a clean interface for analysis and logging purposes.",
-	download_url = "https://github.com/jkpubsrc/python-module-jk-exceptionhelper/tarball/0.2019.10.8",
+	download_url = "https://github.com/jkpubsrc/python-module-jk-exceptionhelper/tarball/0.2020.3.4",
 	include_package_data = False,
 	install_requires = [
 	],
@@ -38,7 +38,7 @@ setup(
 		"jk_exceptionhelper",
 	],
 	url = "https://github.com/jkpubsrc/python-module-jk-exceptionhelper",
-	version = "0.2019.10.8",
+	version = "0.2020.3.4",
 	zip_safe = False,
 	long_description = readme(),
 	long_description_content_type="text/markdown",

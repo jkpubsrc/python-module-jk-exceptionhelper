@@ -31,11 +31,13 @@ import jk_exceptionhelper
 
 Example:
 
+```python
 try:
 	a = 0
 	b = 5 / a
-except:
-	ee = jk_exceptionhelper.analyseException()
+except Exception as ex:
+	ee = jk_exceptionhelper.analyseException(ex)
+```
 
 Now `ee` contains an instance of `ExceptionObject`. `ExceptionObject` contains all relevant information from the exception for your convenience to work with. (For details about the `ExceptionObject` API see below.)
 
@@ -43,13 +45,24 @@ Now `ee` contains an instance of `ExceptionObject`. `ExceptionObject` contains a
 
 Example:
 
+```python
 try:
 	a = 0
 	b = 5 / a
-except:
-	jk_exceptionhelper.analyseException().dump()
+except Exception as ex:
+	jk_exceptionhelper.analyseException(ex).dump()
+```
 
-...
+This will print all data collected to STDOUT. Example:
+
+```
+ZeroDivisionError
+: exceptionTextHR:
+:	division by zero
+: stackTrace:
+:	(<stdin>:3, '')
+\-
+```
 
 API: Functions
 --------------
@@ -101,7 +114,7 @@ except:
 	analyseException().dump()
 ```
 
-This will print:
+This will print something like this:
 
 ```
 ZeroDivisionError
