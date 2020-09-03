@@ -102,8 +102,9 @@ def _analyseNestedException(exception) -> ExceptionObject:
 
 
 
-def analyseException(exception, ignoreJKTypingCheckFunctionSignatureFrames:bool = False) -> ExceptionObject:
+def analyseException(exception, ignoreJKTypingCheckFunctionSignatureFrames:bool = False, ignoreJKTestingAssertFrames:bool = False) -> ExceptionObject:
 	assert isinstance(ignoreJKTypingCheckFunctionSignatureFrames, bool)
+	assert isinstance(ignoreJKTestingAssertFrames, bool)
 
 	type_, exception_, traceback_ = sys.exc_info()
 
@@ -130,7 +131,10 @@ def analyseException(exception, ignoreJKTypingCheckFunctionSignatureFrames:bool 
 	for stElement in traceback.extract_tb(traceback_):
 		#assert isinstance(stElement, traceback.FrameSummary)
 		if ignoreJKTypingCheckFunctionSignatureFrames:
-			if stElement.filename.find("jk_typing/checkFunctionSignature.py") and (stElement.name == "wrapped"):
+			if (stElement.filename.find("jk_typing/checkFunctionSignature.py") >= 0) and (stElement.name == "wrapped"):
+				continue
+		if ignoreJKTestingAssertFrames:
+			if stElement.filename.find("jk_testing/Assert.py") >= 0:
 				continue
 		stackTrace.append(StackTraceItem(
 			stElement.filename,
