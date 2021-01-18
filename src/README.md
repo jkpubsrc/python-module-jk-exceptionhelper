@@ -1,4 +1,4 @@
-﻿jk_exceptionhelper
+jk_exceptionhelper
 ==================
 
 Introduction

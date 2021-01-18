@@ -130,6 +130,7 @@ def analyseException(exception, ignoreJKTypingCheckFunctionSignatureFrames:bool 
 	#print("Trace =", traceback.extract_tb(traceback_))
 	for stElement in traceback.extract_tb(traceback_):
 		#assert isinstance(stElement, traceback.FrameSummary)
+		# print(">", repr(stElement.filename), "|", repr(stElement.name))
 		if ignoreJKTypingCheckFunctionSignatureFrames:
 			if (stElement.filename.find("jk_typing/checkFunctionSignature.py") >= 0) and (stElement.name == "wrapped"):
 				continue
