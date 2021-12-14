@@ -106,14 +106,14 @@ def analyseException(exception, ignoreJKTypingCheckFunctionSignatureFrames:bool 
 	assert isinstance(ignoreJKTypingCheckFunctionSignatureFrames, bool)
 	assert isinstance(ignoreJKTestingAssertFrames, bool)
 
-	type_, exception_, traceback_ = sys.exc_info()
+	_type, _exception, _traceback = sys.exc_info()
 
-	if exception_ is None:
-		exception_ = exception
-		type_ = type(exception)
+	if _exception is None:
+		_exception = exception
+		_type = type(exception)
 
 	exceptionLines = []
-	for line in str(exception_).splitlines():
+	for line in str(_exception).splitlines():
 		line = line.strip()
 		if len(line) > 0:
 			exceptionLines.append(line)
@@ -123,19 +123,26 @@ def analyseException(exception, ignoreJKTypingCheckFunctionSignatureFrames:bool 
 
 	stackTrace = []
 	#print("-X-------------------------------")
-	#print("Type =", type_)
-	#print("Value =", repr(str(exception_)))
+	#print("Type =", _type)
+	#print("Value =", repr(str(_exception)))
 	##print("Trace =")
-	##print("Traceback=", traceback_)
-	#print("Trace =", traceback.extract_tb(traceback_))
-	for stElement in traceback.extract_tb(traceback_):
+	##print("Traceback=", _traceback)
+	#print("Trace =", traceback.extract_tb(_traceback))
+	for stElement in traceback.extract_tb(_traceback):
 		#assert isinstance(stElement, traceback.FrameSummary)
 		# print(">", repr(stElement.filename), "|", repr(stElement.name))
 		if ignoreJKTypingCheckFunctionSignatureFrames:
-			if (stElement.filename.find("jk_typing/checkFunctionSignature.py") >= 0) and (stElement.name == "wrapped"):
+			if (stElement.name == "wrapped") \
+				and (
+					(stElement.filename.find("jk_typing/checkFunctionSignature.py") >= 0) or
+					(stElement.filename.find("jk_typing\\checkFunctionSignature.py") >= 0)
+				):
 				continue
 		if ignoreJKTestingAssertFrames:
-			if stElement.filename.find("jk_testing/Assert.py") >= 0:
+			if (
+					(stElement.filename.find("jk_testing/Assert.py") >= 0) or
+					(stElement.filename.find("jk_testing\\Assert.py") >= 0)
+				):
 				continue
 		stackTrace.append(StackTraceItem(
 			stElement.filename,
@@ -145,13 +152,13 @@ def analyseException(exception, ignoreJKTypingCheckFunctionSignatureFrames:bool 
 			))
 	#print("-X-------------------------------")
 
-	if exception_.__context__:
-		nestedException = _analyseNestedException(exception_.__context__)
+	if _exception.__context__:
+		nestedException = _analyseNestedException(_exception.__context__)
 	else:
 		nestedException = None
 
 
-	return ExceptionObject(exception_, type_.__name__, exceptionTextHR, stackTrace, nestedException)
+	return ExceptionObject(_exception, _type.__name__, exceptionTextHR, stackTrace, nestedException)
 #
 
 

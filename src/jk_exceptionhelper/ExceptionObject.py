@@ -8,6 +8,10 @@ from .StackTraceItem import StackTraceItem
 
 class ExceptionObject(object):
 
+	################################################################################################################################
+	## Constructor
+	################################################################################################################################
+
 	def __init__(self, exceptionClass, exceptionClassName:str, exceptionTextHR:str, stackTrace:list, nestedException):
 		self.exceptionClass = exceptionClass
 
@@ -29,6 +33,18 @@ class ExceptionObject(object):
 			assert isinstance(nestedException, ExceptionObject)
 		self.nestedException = nestedException
 	#
+
+	################################################################################################################################
+	## Public Properties
+	################################################################################################################################
+
+	################################################################################################################################
+	## Helper Methods
+	################################################################################################################################
+
+	################################################################################################################################
+	## Public Methods
+	################################################################################################################################
 
 	def toStrList(self):
 		outStrList = []
@@ -111,7 +127,7 @@ class ExceptionObject(object):
 	#
 
 	@staticmethod
-	def fromJSON(data:dict) -> StackTraceItem:
+	def fromJSON(data:dict):
 		return ExceptionObject(
 			None,
 			data["exception"],

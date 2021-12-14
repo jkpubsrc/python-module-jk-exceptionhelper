@@ -37,7 +37,7 @@ setup(
 	packages = [
 		"jk_exceptionhelper",
 	],
-	version = "0.2021.1.18",
+	version = "0.2021.12.14",
 	zip_safe = False,
 	long_description = readme(),
 	long_description_content_type="text/markdown",
