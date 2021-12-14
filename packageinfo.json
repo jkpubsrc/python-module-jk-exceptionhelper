@@ -21,7 +21,7 @@
 		"license": "Apache2",
 		"name": "jk_exceptionhelper",
 		"packageClass": "python-module",
-		"version": "0.2021.12.14"
+		"version": "0.2021.12.14.1"
 	},
 	"repositories": [
 		{

@@ -132,8 +132,12 @@ def analyseException(exception, ignoreJKTypingCheckFunctionSignatureFrames:bool 
 		#assert isinstance(stElement, traceback.FrameSummary)
 		# print(">", repr(stElement.filename), "|", repr(stElement.name))
 		if ignoreJKTypingCheckFunctionSignatureFrames:
-			if (stElement.name == "wrapped") \
-				and (
+			#if (stElement.name == "wrapped") \
+			#	and (
+			#		(stElement.filename.find("jk_typing/checkFunctionSignature.py") >= 0) or
+			#		(stElement.filename.find("jk_typing\\checkFunctionSignature.py") >= 0)
+			#	):
+			if (
 					(stElement.filename.find("jk_typing/checkFunctionSignature.py") >= 0) or
 					(stElement.filename.find("jk_typing\\checkFunctionSignature.py") >= 0)
 				):
