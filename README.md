@@ -8,7 +8,7 @@ This python module wraps around python exceptions. As the python exception API i
 
 Information about this module can be found here:
 
-* [github.org](https://github.com/jkpubsrc/....)
+* [github.com](https://github.com/jkpubsrc/python-module-jk-exceptionhelper)
 * [pypi.python.org](https://pypi.python.org/pypi/jk_exceptionhelper)
 
 Why this module?
