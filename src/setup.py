@@ -25,7 +25,7 @@ setup(
 		"Topic :: Software Development :: Testing",
 	],
 	description = "As the python exception API is quite a bit obscure this python module wraps around python exceptions to provide a clean interface for analysis and logging purposes.",
-	include_package_data = False,
+	include_package_data = True,
 	install_requires = [
 	],
 	keywords = [
@@ -34,11 +34,17 @@ setup(
 	],
 	license = "Apache2",
 	name = "jk_exceptionhelper",
+	package_data = {
+		"": [
+		],
+	},
 	packages = [
 		"jk_exceptionhelper",
 	],
-	version = "0.2021.12.14.1",
+	scripts = [
+	],
+	version = '0.2023.7.1',
 	zip_safe = False,
 	long_description = readme(),
-	long_description_content_type="text/markdown",
+	long_description_content_type = "text/markdown",
 )

@@ -22,20 +22,18 @@ class StackTraceItem(object):
 	#
 
 	def __str__(self):
-		# return "(" + (self.callingScope if self.callingScope is not None else "(none)") + ", " + self.filePath + ":" + str(self.lineNo) + ", " + repr(self.sourceCodeLine) + ")"
-		return "(" + self.filePath + ":" + str(self.lineNo) + ", " + repr(self.sourceCodeLine) + ")"
+		return self.filePath + ":" + str(self.lineNo) + " :: " + repr(self.sourceCodeLine)
 	#
 
 	def __repr__(self):
-		# return "(" + (self.callingScope if self.callingScope is not None else "(none)") + ", " + self.filePath + ":" + str(self.lineNo) + ", " + repr(self.sourceCodeLine) + ")"
-		return "(" + self.filePath + ":" + str(self.lineNo) + ", " + repr(self.sourceCodeLine) + ")"
+		return self.filePath + ":" + str(self.lineNo) + " :: " + repr(self.sourceCodeLine)
 	#
 
 	def toJSON(self) -> dict:
 		return {
 			"file": self.filePath,
 			"line": self.lineNo,
-			# "callingscope": self.callingScope,
+			"callingscope": self.callingScope,
 			"sourcecode": self.sourceCodeLine,
 		}
 	#
@@ -45,7 +43,7 @@ class StackTraceItem(object):
 		return StackTraceItem(
 			data["file"],
 			data["line"],
-			# data["callingscope"],
+			data["callingscope"],
 			data["sourcecode"]
 		)
 	#
