@@ -5,7 +5,7 @@
 import sys
 import traceback
 
-from jk_exceptionhelper import parseException, ExceptionObject
+from jk_exceptionhelper import analyseException, ExceptionObject
 
 import jk_json
 
@@ -33,7 +33,7 @@ def test2():
 			print(">>X>>>>X>>>>X>>>>X>>")
 
 			# store as JSON
-			jsonData = parseException(ee).toJSON()
+			jsonData = analyseException(ee).toJSON()
 			# now let's output that JSON data
 			jk_json.prettyPrint(jsonData)
 			# now a test to parse JSON
@@ -67,7 +67,7 @@ This example program will output the following JSON data:
 			"file": "./test3.py",
 			"line": 23,
 			"module": "test",
-			"sourcecode": "jsonData = parseException(ee).toJSON()"
+			"sourcecode": "jsonData = analyseException(ee).toJSON()"
 		}
 	],
 	"nested": {
@@ -84,7 +84,7 @@ This example program will output the following JSON data:
 				"file": "./test3.py",
 				"line": 23,
 				"module": "test",
-				"sourcecode": "jsonData = parseException(ee).toJSON()"
+				"sourcecode": "jsonData = analyseException(ee).toJSON()"
 			}
 		],
 	},

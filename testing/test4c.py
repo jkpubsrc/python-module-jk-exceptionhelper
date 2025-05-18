@@ -38,15 +38,20 @@ def analyse():
 
 
 
+
+print()
+
 try:
 	test()
 except Exception as ee1:
-	jk_exceptionhelper.analyseException().dump()
+	jk_exceptionhelper.analyseException(ee1).dump()
+	print()
 
 	try:
 		raise type(ee1.__context__) from ee1
 	except Exception as ee2:
-		jk_exceptionhelper.analyseException().dump()
+		jk_exceptionhelper.analyseException(ee2).dump()
+		print()
 
 
 

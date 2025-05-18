@@ -6,28 +6,6 @@ import jk_exceptionhelper
 
 
 
-def _dumpException(exceptionClassName, exceptionText, stackTrace, indent=""):
-	print(indent + exceptionClassName)
-	if exceptionText is not None:
-		print(indent + ": exceptionText:")
-		print(indent + ":\t" + exceptionText)
-	print(indent + ": stackTrace:")
-	for item in stackTrace:
-		print(indent + ":\t" + str(item))
-#
-
-def dumpException(e):
-	indent = ""
-	while True:
-		exceptionClassName, exceptionText, stackTrace, e = jk_exceptionhelper.getExceptionData(e)
-		_dumpException(exceptionClassName, exceptionText, stackTrace, indent)
-		if e:
-			print(indent + "\- nested exception:")
-			indent += "\t"
-		else:
-			print(indent + "\-")
-			break
-#
 
 
 
@@ -43,7 +21,7 @@ try:
 	b = 5 / a
 
 except Exception as ee:
-	dumpException(ee)
+	jk_exceptionhelper.analyseException(ee).dump()
 
 
 
@@ -64,7 +42,7 @@ except Exception as ee1:
 		assert False
 	
 	except Exception as ee:
-		dumpException(ee)
+		jk_exceptionhelper.analyseException(ee).dump()
 
 
 

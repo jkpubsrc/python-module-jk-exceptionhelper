@@ -20,7 +20,7 @@
 		"license": "Apache2",
 		"name": "jk_exceptionhelper",
 		"packageClass": "python-module",
-		"version": "0.2023.7.1"
+		"version": "0.2025.5.17"
 	},
 	"requirements": {
 		"htmlcssjs_packages": [],

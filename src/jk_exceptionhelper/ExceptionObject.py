@@ -4,19 +4,63 @@ __all__ = (
 	"ExceptionObject",
 )
 
-import sys
 import typing
 import traceback
 
 from .StackTraceItem import StackTraceItem
+from .StackTraceProcessor import StackTraceProcessor
 
 
 
 
 
 
+# def _analyseNestedException(exception) -> ExceptionObject:
+# 	print(">4>>", type(exception.__traceback__), exception.__traceback__)
+
+# 	exceptionLines = []
+# 	for line in str(exception).splitlines():
+# 		line = line.strip()
+# 		if len(line) > 0:
+# 			exceptionLines.append(line)
+# 	exceptionTextHR = " ".join(exceptionLines)
+# 	if not exceptionTextHR:
+# 		exceptionTextHR = None
+
+# 	if exception.__context__:
+# 		nestedException = _analyseNestedException(exception.__context__)
+# 	else:
+# 		nestedException = None
+
+# 	return ExceptionObject(exception, exception.__class__.__name__, exceptionTextHR, None, nestedException)
+# #
 
 
+
+
+
+def _anyToJSON(value) -> typing.Union[dict,list,int,str,float,bool,None]:
+	if value is None:
+		return None
+
+	if isinstance(value, (bool,int,float,str)):
+		return value
+
+	if isinstance(value, dict):
+		ret = {}
+		for k, v in value.items():
+			if not isinstance(k, str):
+				continue
+			ret[k] = _anyToJSON(v)
+		return ret
+
+	if isinstance(value, (tuple,list)):
+		return [
+			_anyToJSON(x) for x in value
+		]
+
+	return f"(not serializable to JSON: {value.__class__.__name__}"
+#
 
 
 
@@ -25,32 +69,6 @@ from .StackTraceItem import StackTraceItem
 
 
 ExceptionObject = typing.NewType("ExceptionObject", object)
-
-
-
-
-
-def _analyseNestedException(exception) -> ExceptionObject:
-	exceptionLines = []
-	for line in str(exception).splitlines():
-		line = line.strip()
-		if len(line) > 0:
-			exceptionLines.append(line)
-	exceptionTextHR = " ".join(exceptionLines)
-	if not exceptionTextHR:
-		exceptionTextHR = None
-
-	if exception.__context__:
-		nestedException = _analyseNestedException(exception.__context__)
-	else:
-		nestedException = None
-
-	return ExceptionObject(exception, exception.__class__.__name__, exceptionTextHR, None, nestedException)
-#
-
-
-
-
 
 class ExceptionObject(object):
 
@@ -61,7 +79,14 @@ class ExceptionObject(object):
 	#
 	# Constructor.
 	#
-	def __init__(self, exceptionClass, exceptionClassName:str, exceptionTextHR:str, stackTrace:typing.List[StackTraceItem], nestedException):
+	def __init__(self,
+			exceptionClass:type,
+			exceptionClassName:str, 
+			exceptionTextHR:str,
+			stackTrace:typing.List[StackTraceItem],
+			nestedException,
+			extraValues:typing.Union[typing.Dict[str,typing.Any],None] = None,
+		):
 		self.exceptionClass:type = exceptionClass
 
 		self.exceptionClassName:str = exceptionClassName
@@ -80,7 +105,11 @@ class ExceptionObject(object):
 
 		if nestedException is not None:
 			assert isinstance(nestedException, ExceptionObject)
-		self.nestedException:typing.Union[ExceptionObject,None] = nestedException
+		self.nestedException = nestedException
+
+		if extraValues is not None:
+			assert isinstance(extraValues, dict)
+		self.extraValues = extraValues
 	#
 
 	################################################################################################################################
@@ -102,13 +131,21 @@ class ExceptionObject(object):
 		indent = ""
 		while True:
 			outStrList.append(indent + e.exceptionClassName)
+
 			if e.exceptionTextHR is not None:
 				outStrList.append(indent + ": exceptionTextHR:")
 				outStrList.append(indent + ":\t" + e.exceptionTextHR)
+
 			if e.stackTrace is not None:
 				outStrList.append(indent + ": stackTrace:")
 				for item in reversed(e.stackTrace):
 					outStrList.append(indent + ":\t" + str(item))
+
+			if e.extraValues:
+				outStrList.append(indent + ": extraValues:")
+				for k,v in e.extraValues.items():
+					outStrList.append(indent + f":\t{k} = {v!r}")
+
 			if e.nestedException:
 				e = e.nestedException
 				outStrList.append(indent + "\- nestedException:")
@@ -120,18 +157,26 @@ class ExceptionObject(object):
 		return outStrList
 	#
 
-	def dump(self) -> None:
+	def dump(self, prefix:str = "") -> None:
 		e = self
-		indent = ""
+		indent = prefix
 		while True:
 			print(indent + e.exceptionClassName)
+
 			if e.exceptionTextHR is not None:
 				print(indent + ": exceptionTextHR:")
 				print(indent + ":\t" + e.exceptionTextHR)
+
 			if e.stackTrace is not None:
 				print(indent + ": stackTrace:")
 				for item in reversed(e.stackTrace):
 					print(indent + ":\t" + str(item))
+
+			if e.extraValues:
+				print(indent + ": extraValues:")
+				for k,v in e.extraValues.items():
+					print(indent + f":\t{k} = {v!r}")
+
 			if e.nestedException:
 				e = e.nestedException
 				print(indent + "\- nestedException:")
@@ -151,12 +196,20 @@ class ExceptionObject(object):
 			"text": self.exceptionTextHR,
 			"exception": self.exceptionClassName,
 		}
-		if self.stackTrace is not None:
+
+		if self.stackTrace is None:
+			ret["stacktrace"] = None
+		else:
 			ret["stacktrace"] = [ x.toJSON() for x in self.stackTrace ]
+
+		if self.extraValues is not None:
+			ret["extraValues"] = self.extraValues
+
 		if bRecursive and self.nestedException:
 			ret["nested"] = self.nestedException.toJSON()
 		else:
 			ret["nested"] = None
+
 		return ret
 	#
 
@@ -168,10 +221,15 @@ class ExceptionObject(object):
 			"text": self.exceptionTextHR,
 			"exception": self.exceptionClassName,
 		}
-		if self.stackTrace is not None:
-			ret["stacktrace"] = [ x.toJSON() for x in self.stackTrace ]
-		else:
+
+		if self.stackTrace is None:
 			ret["stacktrace"] = None
+		else:
+			ret["stacktrace"] = [ x.toJSON() for x in self.stackTrace ]
+
+		if self.extraValues is not None:
+			ret["extraValues"] = self.extraValues
+
 		return ret
 	#
 
@@ -181,20 +239,34 @@ class ExceptionObject(object):
 
 	@staticmethod
 	def fromJSON(data:dict):
+		assert isinstance(data, dict)
 		return ExceptionObject(
 			None,
 			data["exception"],
 			data["text"],
 			([ StackTraceItem.fromJSON(x) for x in data["stacktrace"] ]) if data.get("stacktrace") else None,
-			ExceptionObject.fromJSON(data["nested"]) if data.get("nested") else None
+			ExceptionObject.fromJSON(data["nested"]) if data.get("nested") else None,
+			data.get("extraValues")
 		)
 	#
 
+	#
+	# This method constructs an ExceptionObject instance from an existing exception.
+	#
 	@staticmethod
-	def fromException(exception:BaseException, ignoreJKTypingCheckFunctionSignatureFrames:bool = False, ignoreJKTestingAssertFrames:bool = False) -> ExceptionObject:
+	def fromException(
+			exception:BaseException,
+			ignoreJKTypingCheckFunctionSignatureFrames:bool = False,
+			ignoreJKTestingAssertFrames:bool = False,
+			ignoreJKLoggingFrames:bool = False,
+			_bWithFullStackTrace:bool = True,
+			stackTraceProcessor:typing.Union[StackTraceProcessor,None] = None
+		) -> ExceptionObject:
+
 		assert isinstance(exception, BaseException)
 		assert isinstance(ignoreJKTypingCheckFunctionSignatureFrames, bool)
 		assert isinstance(ignoreJKTestingAssertFrames, bool)
+		assert isinstance(ignoreJKLoggingFrames, bool)
 
 		# ----
 
@@ -207,11 +279,11 @@ class ExceptionObject(object):
 		if len(_args) == 0:
 			sArgs = ""
 		elif len(_args) == 1:
-			sArgs = _args[0]
+			sArgs = str(_args[0])
 		else:
 			sArgs = str(_args)
 
-		exceptionLines = []
+		exceptionLines:typing.List[str] = []
 		for line in sArgs.splitlines():
 			line = line.strip()
 			if len(line) > 0:
@@ -220,7 +292,9 @@ class ExceptionObject(object):
 		if not exceptionTextHR:
 			exceptionTextHR = None
 
-		stackTrace = []
+		# ----
+
+		stackTrace1:typing.List[StackTraceItem] = []
 		for stElement in traceback.extract_tb(exception.__traceback__):
 			if ignoreJKTypingCheckFunctionSignatureFrames:
 				if (
@@ -234,26 +308,93 @@ class ExceptionObject(object):
 						(stElement.filename.find("jk_testing\\Assert.py") >= 0)
 					):
 					continue
-			stackTrace.append(StackTraceItem(
+			if ignoreJKLoggingFrames:
+				if (
+						(stElement.filename.find("jk_logging/") >= 0) or
+						(stElement.filename.find("jk_logging\\") >= 0)
+					):
+					continue
+			stackTrace1.append(StackTraceItem(
 				stElement.filename,
 				stElement.lineno,
 				stElement.name,
 				stElement.line
 			))
 
-		if not nestedException:
-			if hasattr(exception, "cause"):
-				_n = exception.cause
-				if isinstance(_n, ExceptionObject):
-					nestedException = _n
-				else:
-					if exception.__context__:
-						nestedException = _analyseNestedException(exception.__context__)
+		stackTrace2:typing.List[StackTraceItem] = []
+		if _bWithFullStackTrace:
+			for stElement in traceback.extract_stack():
+				if ignoreJKTypingCheckFunctionSignatureFrames:
+					if (
+							(stElement.filename.find("jk_typing/checkFunctionSignature.py") >= 0) or
+							(stElement.filename.find("jk_typing\\checkFunctionSignature.py") >= 0)
+						):
+						continue
+				if ignoreJKTestingAssertFrames:
+					if (
+							(stElement.filename.find("jk_testing/Assert.py") >= 0) or
+							(stElement.filename.find("jk_testing\\Assert.py") >= 0)
+						):
+						continue
+				if ignoreJKLoggingFrames:
+					if (
+							(stElement.filename.find("jk_logging/") >= 0) or
+							(stElement.filename.find("jk_logging\\") >= 0)
+						):
+						continue
+				stackTrace2.append(StackTraceItem(
+					stElement.filename,
+					stElement.lineno,
+					stElement.name,
+					stElement.line
+				))
+
+			# remove last stacktrace item as it represents a line in the current method
+			del stackTrace2[-1]
+
+		stackTrace = stackTrace2
+		stackTrace.extend(stackTrace1)
+
+		# ----
+
+		if stackTraceProcessor:
+			stackTrace = stackTraceProcessor(exception, stackTrace)
+
+		# ----
+
+		_exceptionArgs = exception.args[1:]
+		# NOTE: we don't do anything with these values right now.
+
+		# ----
+
+		_extraValues = getattr(exception, "extraValues", None)
+		if _extraValues:
+			assert isinstance(_extraValues, dict)
+			_extraValues = _anyToJSON(_extraValues)
+		extraValues:typing.Union[dict,None] = _extraValues
+
+		# ----
+
+		# if not nestedException:
+		# 	if hasattr(exception, "cause"):
+		# 		_n = exception.cause
+		# 		if isinstance(_n, ExceptionObject):
+		# 			nestedException = _n
+		# 		else:
+		# 			if exception.__context__:
+		# 				nestedException = _analyseNestedException(exception.__context__)
 		if not nestedException:
 			if exception.__context__:
-				nestedException = _analyseNestedException(exception.__context__)
+				nestedException = ExceptionObject.fromException(
+					exception.__context__,
+					ignoreJKTypingCheckFunctionSignatureFrames,
+					ignoreJKTestingAssertFrames,
+					ignoreJKLoggingFrames,
+					False,
+					stackTraceProcessor,
+				)
 
-		return ExceptionObject(exception, type(exception).__name__, exceptionTextHR, stackTrace, nestedException)
+		return ExceptionObject(exception, type(exception).__name__, exceptionTextHR, stackTrace, nestedException, extraValues)
 	#
 
 #
