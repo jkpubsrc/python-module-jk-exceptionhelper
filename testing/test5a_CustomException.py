@@ -54,7 +54,7 @@ This example program will output the following lines:
 10	:       ./test5.py:29 :: 'raise CustomException(3.1415927)'
 11  :       /usr/local/lib/python3.8/dist-packages/jk_exceptionhelper/exception_helper.py:11 :: 'return ExceptionObject.fromException(exception, ignoreJKTypingCheckFunctionSignatureFrames, ignoreJKTestingAssertFrames, ignoreJKLoggingFrames)'
 12  :       ./test5.py:32 :: 'jk_exceptionhelper.analyseException(ee).dump()'
-15	\-
+15	\\-
 """
 
 

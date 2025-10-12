@@ -5,6 +5,7 @@ __all__ = (
 )
 
 import typing
+import collections
 import traceback
 
 from .StackTraceItem import StackTraceItem
@@ -17,7 +18,7 @@ from .StackTraceProcessor import StackTraceProcessor
 
 # def _analyseNestedException(exception) -> ExceptionObject:
 # 	print(">4>>", type(exception.__traceback__), exception.__traceback__)
-
+#
 # 	exceptionLines = []
 # 	for line in str(exception).splitlines():
 # 		line = line.strip()
@@ -26,12 +27,12 @@ from .StackTraceProcessor import StackTraceProcessor
 # 	exceptionTextHR = " ".join(exceptionLines)
 # 	if not exceptionTextHR:
 # 		exceptionTextHR = None
-
+#
 # 	if exception.__context__:
 # 		nestedException = _analyseNestedException(exception.__context__)
 # 	else:
 # 		nestedException = None
-
+#
 # 	return ExceptionObject(exception, exception.__class__.__name__, exceptionTextHR, None, nestedException)
 # #
 
@@ -39,14 +40,39 @@ from .StackTraceProcessor import StackTraceProcessor
 
 
 
+
+#
+# This method recursively converts an extra value to a JSON representation.
+#
+# The following type conversions will be performed:
+# * None -> None
+# * bool -> bool
+# * int -> int
+# * float -> float
+# * str -> str
+# * list -> list (recursively)
+# * tuple -> list (recursively)
+# * set -> list (recursively)
+# * frozenset -> list (recursively)
+# * dict -> dict (recursively; keys that are not of type str are skipped.)
+# * callable method dumpToStrList() -> { "@class": "RawLines", "lines": .... }
+# * callable method toJSON() -> dict
+# * callable method _toJSON() -> dict
+#
+# If something went wrong during conversion, the following dict will be returned:
+#
+# { "@class": "SerializationError", "errMsg": "...." }
+#
 def _anyToJSON(value) -> typing.Union[dict,list,int,str,float,bool,None]:
 	if value is None:
 		return None
 
+	# ----
+
 	if isinstance(value, (bool,int,float,str)):
 		return value
 
-	if isinstance(value, dict):
+	if isinstance(value, (dict,collections.OrderedDict)):
 		ret = {}
 		for k, v in value.items():
 			if not isinstance(k, str):
@@ -54,12 +80,57 @@ def _anyToJSON(value) -> typing.Union[dict,list,int,str,float,bool,None]:
 			ret[k] = _anyToJSON(v)
 		return ret
 
-	if isinstance(value, (tuple,list)):
+	if isinstance(value, (set,frozenset,tuple,list)):
 		return [
 			_anyToJSON(x) for x in value
 		]
 
-	return f"(not serializable to JSON: {value.__class__.__name__}"
+	# ----
+
+	if hasattr(value, "dumpToStrList"):
+		try:
+			return {
+				"@class": "RawLines",
+				"lines": value.dumpToStrList(),
+			}
+		except Exception as ee:
+			return {
+				"@class": "SerializationError",
+				"errMsg": f"Calling dumpToStrList() failed: {ee}",
+			}
+
+	# ----
+
+	if hasattr(value, "toJSON"):
+		try:
+			toJSONResult = value.toJSON()
+			if toJSONResult is not None:
+				assert isinstance(toJSONResult, (int,str,bool,float,dict,list))
+			return toJSONResult
+		except Exception as ee:
+			return {
+				"@class": "SerializationError",
+				"errMsg": f"Calling toJSON() failed: {ee}",
+			}
+
+	if hasattr(value, "_toJSON"):
+		try:
+			toJSONResult = value._toJSON()
+			if toJSONResult is not None:
+				assert isinstance(toJSONResult, (int,str,bool,float,dict,list))
+			return toJSONResult
+		except Exception as ee:
+			return {
+				"@class": "SerializationError",
+				"errMsg": f"Calling _toJSON() failed: {ee}",
+			}
+
+	# ----
+
+	return {
+		"@class": "SerializationError",
+		"errMsg": f"Not serializable to JSON: {value.__class__.__name__}",
+	}
 #
 
 
@@ -79,15 +150,25 @@ class ExceptionObject(object):
 	#
 	# Constructor.
 	#
+	# @param	type? exceptionClass				(optional) The exception class this object will represent.
+	#												Typically this parameter contains a value.
+	#												However, if an instance of ExceptionObject is reconstructed from JSON or other data this value might not be available any more.
+	# @param	str exceptionClassName				(required) The name of the exception calss this object will represent.
+	# @param	str exceptionTextHR					(required) A human readable (= HR) text message.
+	# @param	StackTraceItem[] stackTrace			(required) The stack trace of this exception in descending order: The last entry will be the top of the stack.
+	# @param	ExceptionObject? nestedException	(optional) A nested exception (if any)
+	# @param	dict<str,any>? extraValues			(optional) An optional dictionary with extra values.
+	#												These values should be JSON serializable for printing.
+	#
 	def __init__(self,
-			exceptionClass:type,
+			exceptionClass:type|None,
 			exceptionClassName:str, 
 			exceptionTextHR:str,
 			stackTrace:typing.List[StackTraceItem],
-			nestedException,
+			nestedException:ExceptionObject|None,
 			extraValues:typing.Union[typing.Dict[str,typing.Any],None] = None,
 		):
-		self.exceptionClass:type = exceptionClass
+		self.exceptionClass:type|None = exceptionClass
 
 		self.exceptionClassName:str = exceptionClassName
 
@@ -148,10 +229,10 @@ class ExceptionObject(object):
 
 			if e.nestedException:
 				e = e.nestedException
-				outStrList.append(indent + "\- nestedException:")
+				outStrList.append(indent + "\\- nestedException:")
 				indent += "\t"
 			else:
-				outStrList.append(indent + "\-")
+				outStrList.append(indent + "\\-")
 				break
 
 		return outStrList
@@ -179,10 +260,10 @@ class ExceptionObject(object):
 
 			if e.nestedException:
 				e = e.nestedException
-				print(indent + "\- nestedException:")
+				print(indent + "\\- nestedException:")
 				indent += "\t"
 			else:
-				print(indent + "\-")
+				print(indent + "\\-")
 				break
 	#
 
@@ -251,7 +332,18 @@ class ExceptionObject(object):
 	#
 
 	#
-	# This method constructs an ExceptionObject instance from an existing exception.
+	# This method parses a Python exception object and constructs an <c>ExceptionObject</c> instance from it.
+	#
+	# @param	BaseException exception								(required) The exception object.
+	# @param	bool ignoreJKTypingCheckFunctionSignatureFrames		(required) Flag to ignore stack frames from "jk_typing/checkFunctionSignature.py".
+	# 																Such stacking frames don't help but distract from the essentials.
+	# @param	bool ignoreJKTestingAssertFrames					(required) Flag to ignore stack frames from "jk_testing/Assert.py".
+	# 																Such stacking frames don't help but distract from the essentials.
+	# @param	bool ignoreJKLoggingFrames							(required) Flag to ignore stack frames from "jk_logging".
+	# 																Such stacking frames don't help but distract from the essentials.
+	# @param	bool _bWithFullStackTrace							(required) ???
+	# @param	StackTraceProcessor? stackTraceProcessor			(optional) An optional stack trace processor that can return a modified version of the stack trace (e.g. a shortened one).
+	#																If specified the stack trace will be passed through the stack trace processor before an instance of <c>ExceptionObject</c> is constructed.
 	#
 	@staticmethod
 	def fromException(
@@ -367,11 +459,11 @@ class ExceptionObject(object):
 
 		# ----
 
+		extraValues:typing.Union[dict,None] = None
 		_extraValues = getattr(exception, "extraValues", None)
 		if _extraValues:
-			assert isinstance(_extraValues, dict)
-			_extraValues = _anyToJSON(_extraValues)
-		extraValues:typing.Union[dict,None] = _extraValues
+			if isinstance(_extraValues, dict):
+				extraValues = _anyToJSON(_extraValues)
 
 		# ----
 

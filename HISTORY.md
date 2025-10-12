@@ -13,3 +13,8 @@
 * 2025-05-17:
 	* Improved: Support for extra key value pairs via 'extraValues'
 
+* 2025-10-12:
+	* Fixed: Syntax of escape sequences
+	* Added: Extra values
+	* Improved: Documentation
+
