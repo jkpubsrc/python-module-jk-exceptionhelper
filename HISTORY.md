@@ -18,3 +18,6 @@
 	* Added: Extra values
 	* Improved: Documentation
 
+* 2025-11-30:
+	* Fixed: The main stack trace element is now returned as required.
+

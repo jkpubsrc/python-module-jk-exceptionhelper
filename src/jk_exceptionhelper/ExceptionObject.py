@@ -344,6 +344,9 @@ class ExceptionObject(object):
 	# @param	bool _bWithFullStackTrace							(required) ???
 	# @param	StackTraceProcessor? stackTraceProcessor			(optional) An optional stack trace processor that can return a modified version of the stack trace (e.g. a shortened one).
 	#																If specified the stack trace will be passed through the stack trace processor before an instance of <c>ExceptionObject</c> is constructed.
+	# @param	bool ignoreInspectFrames							(required) Flag to ignore stack frames from "inspect.py". Those stack frames are typically raised
+	#																if the specified arguments do not match the expected arguments list. However, those stack fragmes do not provide additional
+	#																value to the developer, instead they distract from the real error.
 	#
 	@staticmethod
 	def fromException(
@@ -352,13 +355,18 @@ class ExceptionObject(object):
 			ignoreJKTestingAssertFrames:bool = False,
 			ignoreJKLoggingFrames:bool = False,
 			_bWithFullStackTrace:bool = True,
-			stackTraceProcessor:typing.Union[StackTraceProcessor,None] = None
+			stackTraceProcessor:typing.Union[StackTraceProcessor,None] = None,
+			*,
+			ignoreNestedStopIteration:bool = True,
+			ignoreInspectFrames:bool = True,
 		) -> ExceptionObject:
 
 		assert isinstance(exception, BaseException)
 		assert isinstance(ignoreJKTypingCheckFunctionSignatureFrames, bool)
 		assert isinstance(ignoreJKTestingAssertFrames, bool)
 		assert isinstance(ignoreJKLoggingFrames, bool)
+		assert isinstance(ignoreNestedStopIteration, bool)
+		assert isinstance(ignoreInspectFrames, bool)
 
 		# ----
 
@@ -388,24 +396,49 @@ class ExceptionObject(object):
 
 		stackTrace1:typing.List[StackTraceItem] = []
 		for stElement in traceback.extract_tb(exception.__traceback__):
-			if ignoreJKTypingCheckFunctionSignatureFrames:
-				if (
-						(stElement.filename.find("jk_typing/checkFunctionSignature.py") >= 0) or
-						(stElement.filename.find("jk_typing\\checkFunctionSignature.py") >= 0)
-					):
-					continue
-			if ignoreJKTestingAssertFrames:
-				if (
-						(stElement.filename.find("jk_testing/Assert.py") >= 0) or
-						(stElement.filename.find("jk_testing\\Assert.py") >= 0)
-					):
-					continue
-			if ignoreJKLoggingFrames:
-				if (
-						(stElement.filename.find("jk_logging/") >= 0) or
-						(stElement.filename.find("jk_logging\\") >= 0)
-					):
-					continue
+			# print("@@@@", stElement)
+			# print("@@@@\t filename=", repr(stElement.filename))
+			# print("@@@@\t lineno=", repr(stElement.lineno))
+			# #print("@@@@\t end_lineno=", repr(stElement.end_lineno))
+			# #print("@@@@\t colno=", repr(stElement.colno))
+			# #print("@@@@\t end_colno=", repr(stElement.end_colno))
+			# print("@@@@\t name=", repr(stElement.name))
+			# #print("@@@@\t _code=", repr(stElement._code))
+			# print("@@@@\t _lines=", repr(stElement._lines))
+			# #print("@@@@\t _lines_dedented=", repr(stElement._lines_dedented))
+			# #print("@@@@\t locals=", repr(stElement.locals))
+
+			# NOTE: we should not skip any stack frames here. it seems that nowadays extract_tb() will provide the exact location of the error.
+			#		this might have changed over time in python.
+
+			# if ignoreJKTypingCheckFunctionSignatureFrames:
+			# 	if (
+			# 			(stElement.filename.find("jk_typing/checkFunctionSignature.py") >= 0) or
+			# 			(stElement.filename.find("jk_typing\\checkFunctionSignature.py") >= 0)
+			# 		):
+			# 		print("@@@@\t-- removing frame because of flag ignoreJKTypingCheckFunctionSignatureFrames")
+			# 		continue
+			# if ignoreJKTestingAssertFrames:
+			# 	if (
+			# 			(stElement.filename.find("jk_testing/Assert.py") >= 0) or
+			# 			(stElement.filename.find("jk_testing\\Assert.py") >= 0)
+			# 		):
+			# 		print("@@@@\t-- removing frame because of flag ignoreJKTestingAssertFrames")
+			# 		continue
+			# if ignoreJKLoggingFrames:
+			# 	if (
+			# 			(stElement.filename.find("jk_logging/") >= 0) or
+			# 			(stElement.filename.find("jk_logging\\") >= 0)
+			# 		):
+			# 		print("@@@@\t-- removing frame because of flag ignoreJKLoggingFrames")
+			# 		continue
+			# if ignoreInspectFrames:
+			# 	if (
+			# 			(stElement.filename.find("/inspect.py") >= 0) or
+			# 			(stElement.filename.find("\\inspect.py") >= 0)
+			# 		):
+			# 		print("@@@@\t-- removing frame because of flag ignoreInspectFrames")
+			# 		continue
 			stackTrace1.append(StackTraceItem(
 				stElement.filename,
 				stElement.lineno,
@@ -416,23 +449,45 @@ class ExceptionObject(object):
 		stackTrace2:typing.List[StackTraceItem] = []
 		if _bWithFullStackTrace:
 			for stElement in traceback.extract_stack():
+				# print("@@wfst@@", stElement)
+				# print("@@wfst@@\t filename=", repr(stElement.filename))
+				# print("@@wfst@@\t lineno=", repr(stElement.lineno))
+				# #print("@@wfst@@\t end_lineno=", repr(stElement.end_lineno))
+				# #print("@@wfst@@\t colno=", repr(stElement.colno))
+				# #print("@@wfst@@\t end_colno=", repr(stElement.end_colno))
+				# print("@@wfst@@\t name=", repr(stElement.name))
+				# #print("@@wfst@@\t _code=", repr(stElement._code))
+				# print("@@wfst@@\t _lines=", repr(stElement._lines))
+				# #print("@@wfst@@\t _lines_dedented=", repr(stElement._lines_dedented))
+				# #print("@@wfst@@\t locals=", repr(stElement.locals))
+
 				if ignoreJKTypingCheckFunctionSignatureFrames:
 					if (
 							(stElement.filename.find("jk_typing/checkFunctionSignature.py") >= 0) or
 							(stElement.filename.find("jk_typing\\checkFunctionSignature.py") >= 0)
 						):
+						#print("@@wfst@@\t-- removing frame because of flag ignoreJKTypingCheckFunctionSignatureFrames")
 						continue
 				if ignoreJKTestingAssertFrames:
 					if (
 							(stElement.filename.find("jk_testing/Assert.py") >= 0) or
 							(stElement.filename.find("jk_testing\\Assert.py") >= 0)
 						):
+						#print("@@wfst@@\t-- removing frame because of flag ignoreJKTestingAssertFrames")
 						continue
 				if ignoreJKLoggingFrames:
 					if (
 							(stElement.filename.find("jk_logging/") >= 0) or
 							(stElement.filename.find("jk_logging\\") >= 0)
 						):
+						#print("@@wfst@@\t-- removing frame because of flag ignoreJKLoggingFrames")
+						continue
+				if ignoreInspectFrames:
+					if (
+							(stElement.filename.find("/inspect.py") >= 0) or
+							(stElement.filename.find("\\inspect.py") >= 0)
+						):
+						#print("@@wfst@@\t-- removing frame because of flag ignoreInspectFrames")
 						continue
 				stackTrace2.append(StackTraceItem(
 					stElement.filename,
@@ -441,7 +496,8 @@ class ExceptionObject(object):
 					stElement.line
 				))
 
-			# remove last stacktrace item as it represents a line in the current method
+			# remove last stacktrace item as it represents a line in the current method.
+			# we don't need this line, it is not helpful at all.
 			del stackTrace2[-1]
 
 		stackTrace = stackTrace2
@@ -477,14 +533,18 @@ class ExceptionObject(object):
 		# 				nestedException = _analyseNestedException(exception.__context__)
 		if not nestedException:
 			if exception.__context__:
-				nestedException = ExceptionObject.fromException(
-					exception.__context__,
-					ignoreJKTypingCheckFunctionSignatureFrames,
-					ignoreJKTestingAssertFrames,
-					ignoreJKLoggingFrames,
-					False,
-					stackTraceProcessor,
-				)
+				bDescend = True
+				if ignoreNestedStopIteration and isinstance(exception.__context__, StopIteration):
+					bDescend = False
+				if bDescend:
+					nestedException = ExceptionObject.fromException(
+						exception.__context__,
+						ignoreJKTypingCheckFunctionSignatureFrames,
+						ignoreJKTestingAssertFrames,
+						ignoreJKLoggingFrames,
+						False,
+						stackTraceProcessor,
+					)
 
 		return ExceptionObject(exception, type(exception).__name__, exceptionTextHR, stackTrace, nestedException, extraValues)
 	#
