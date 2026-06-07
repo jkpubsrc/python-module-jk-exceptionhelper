@@ -21,3 +21,10 @@
 * 2025-11-30:
 	* Fixed: The main stack trace element is now returned as required.
 
+* 2026-02-01:
+	* Fixed: Default stack trace processing
+	* Added: Feature ignoreJKPrettyPrintObjFrames
+
+* 2026-05-14:
+	* Added: Variable exceptionClassFQN
+

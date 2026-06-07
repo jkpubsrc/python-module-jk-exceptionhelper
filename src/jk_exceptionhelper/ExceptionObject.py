@@ -14,6 +14,15 @@ from .StackTraceProcessor import StackTraceProcessor
 
 
 
+def _getFQN(clazz:type):
+	module = clazz.__module__
+	if module == 'builtins':
+		return clazz.__qualname__ # avoid outputs like 'builtins.str'
+	return module + '.' + clazz.__qualname__
+#
+
+
+
 
 
 # def _analyseNestedException(exception) -> ExceptionObject:
@@ -153,7 +162,7 @@ class ExceptionObject(object):
 	# @param	type? exceptionClass				(optional) The exception class this object will represent.
 	#												Typically this parameter contains a value.
 	#												However, if an instance of ExceptionObject is reconstructed from JSON or other data this value might not be available any more.
-	# @param	str exceptionClassName				(required) The name of the exception calss this object will represent.
+	# @param	str exceptionClassFQN				(required) The name of the exception calss this object will represent.
 	# @param	str exceptionTextHR					(required) A human readable (= HR) text message.
 	# @param	StackTraceItem[] stackTrace			(required) The stack trace of this exception in descending order: The last entry will be the top of the stack.
 	# @param	ExceptionObject? nestedException	(optional) A nested exception (if any)
@@ -162,7 +171,7 @@ class ExceptionObject(object):
 	#
 	def __init__(self,
 			exceptionClass:type|None,
-			exceptionClassName:str, 
+			exceptionClassFQN:str, 
 			exceptionTextHR:str,
 			stackTrace:typing.List[StackTraceItem],
 			nestedException:ExceptionObject|None,
@@ -170,7 +179,7 @@ class ExceptionObject(object):
 		):
 		self.exceptionClass:type|None = exceptionClass
 
-		self.exceptionClassName:str = exceptionClassName
+		self.exceptionClassFQN = exceptionClassFQN
 
 		if exceptionTextHR is not None:
 			assert isinstance(exceptionTextHR, str)
@@ -197,13 +206,115 @@ class ExceptionObject(object):
 	## Public Properties
 	################################################################################################################################
 
+	@property
+	def exceptionClassName(self) -> str:
+		p = self.exceptionClassFQN.rfind(".")
+		if p < 0:
+			return self.exceptionClassFQN
+		return self.exceptionClassFQN[p+1:]
+	#
+
 	################################################################################################################################
 	## Helper Methods
 	################################################################################################################################
 
+	@staticmethod
+	def _stackTraceProcessor_default(
+			ex:BaseException,
+			stackTraceItems:list[StackTraceItem],
+			*,
+			ignoreJKTypingCheckFunctionSignatureFrames:bool,
+			ignoreJKTestingAssertFrames:bool,
+			ignoreJKLoggingFrames:bool,
+			ignoreInspectFrames:bool,
+			ignoreJKPrettyPrintObjFrames:bool,
+		) -> list[StackTraceItem]:
+
+		ret = []
+
+		for stElement in stackTraceItems:
+			if (ignoreJKTypingCheckFunctionSignatureFrames and (
+				stElement.filePath.endswith("jk_typing/checkFunctionSignature.py") or
+				stElement.filePath.endswith("jk_typing\\checkFunctionSignature.py")
+			)):
+				#print("@@wfst@@\t-- removing frame because of flag ignoreJKTypingCheckFunctionSignatureFrames")
+				continue
+
+			if (ignoreJKTestingAssertFrames and (
+				stElement.filePath.endswith("jk_testing/Assert.py") or
+				stElement.filePath.endswith("jk_testing\\Assert.py")
+			)):
+				#print("@@wfst@@\t-- removing frame because of flag ignoreJKTestingAssertFrames")
+				continue
+
+			if (ignoreJKLoggingFrames and (
+				("/jk_logging/" in stElement.filePath) or
+				("\\jk_logging\\" in stElement.filePath)
+			)):
+				#print("@@wfst@@\t-- removing frame because of flag ignoreJKLoggingFrames")
+				continue
+
+			if (ignoreInspectFrames and (
+				stElement.filePath.endswith("/inspect.py") or
+				stElement.filePath.endswith("\\inspect.py")
+			)):
+				#print("@@wfst@@\t-- removing frame because of flag ignoreInspectFrames")
+				continue
+
+			if (ignoreJKPrettyPrintObjFrames and (
+				stElement.filePath.endswith("/jk_prettyprintobj/dumper.py") or
+				stElement.filePath.endswith("\\jk_prettyprintobj\\dumper.py")
+			)):
+				#print("@@wfst@@\t-- removing frame because of flag ignoreInspectFrames")
+				continue
+
+			ret.append(stElement)
+
+		return ret
+	#
+
 	################################################################################################################################
 	## Public Methods
 	################################################################################################################################
+
+	# def isOfType(self, exceptionName:str, bRecursive:bool = True) -> bool:
+	# 	assert isinstance(exceptionName, str)
+	# 
+	# 	# ----
+	# 
+	# 	cur = self
+	# 	while cur is not None:
+	# 		if cur.exceptionClassFQN == exceptionName:
+	# 			return True
+	# 		if not bRecursive:
+	# 			break
+	# 		cur = cur.nestedException
+	# 
+	# 	cur = self
+	# 	while cur is not None:
+	# 		if cur.exceptionClassName == exceptionName:
+	# 			return True
+	# 		if not bRecursive:
+	# 			break
+	# 		cur = cur.nestedException
+	# 
+	# 	return False
+	# #
+
+	#
+	# Collect all exception simple class names and exception full qualified class names.
+	#
+	def collectAllExceptionClasses(self) -> set[str]:
+		ret = set()
+
+		cur = self
+		while cur is not None:
+			ret.add(cur.exceptionClassFQN)
+			ret.add(cur.exceptionClassName)
+			cur = cur.nestedException
+
+		return ret
+	#
 
 	def toStrList(self) -> typing.List[str]:
 		outStrList = []
@@ -211,7 +322,7 @@ class ExceptionObject(object):
 		e = self
 		indent = ""
 		while True:
-			outStrList.append(indent + e.exceptionClassName)
+			outStrList.append(indent + e.exceptionClassFQN)
 
 			if e.exceptionTextHR is not None:
 				outStrList.append(indent + ": exceptionTextHR:")
@@ -242,7 +353,7 @@ class ExceptionObject(object):
 		e = self
 		indent = prefix
 		while True:
-			print(indent + e.exceptionClassName)
+			print(indent + e.exceptionClassFQN)
 
 			if e.exceptionTextHR is not None:
 				print(indent + ": exceptionTextHR:")
@@ -275,7 +386,7 @@ class ExceptionObject(object):
 	def toJSON(self, bRecursive:bool = True) -> dict:
 		ret = {
 			"text": self.exceptionTextHR,
-			"exception": self.exceptionClassName,
+			"exception": self.exceptionClassFQN,
 		}
 
 		if self.stackTrace is None:
@@ -300,7 +411,7 @@ class ExceptionObject(object):
 	def toJSON_flat(self):
 		ret = {
 			"text": self.exceptionTextHR,
-			"exception": self.exceptionClassName,
+			"exception": self.exceptionClassFQN,
 		}
 
 		if self.stackTrace is None:
@@ -351,14 +462,15 @@ class ExceptionObject(object):
 	@staticmethod
 	def fromException(
 			exception:BaseException,
-			ignoreJKTypingCheckFunctionSignatureFrames:bool = False,
-			ignoreJKTestingAssertFrames:bool = False,
-			ignoreJKLoggingFrames:bool = False,
+			ignoreJKTypingCheckFunctionSignatureFrames:bool = True,
+			ignoreJKTestingAssertFrames:bool = True,
+			ignoreJKLoggingFrames:bool = True,
 			_bWithFullStackTrace:bool = True,
-			stackTraceProcessor:typing.Union[StackTraceProcessor,None] = None,
+			stackTraceProcessor:StackTraceProcessor|None = None,
 			*,
 			ignoreNestedStopIteration:bool = True,
 			ignoreInspectFrames:bool = True,
+			ignoreJKPrettyPrintObjFrames:bool = True,
 		) -> ExceptionObject:
 
 		assert isinstance(exception, BaseException)
@@ -372,9 +484,20 @@ class ExceptionObject(object):
 
 		_args = exception.args
 		nestedException = None
-		if _args and isinstance(_args[-1], ExceptionObject):
-			nestedException = _args[-1]
-			_args = _args[:-1]
+		if exception.__cause__ is not None:
+			nestedException = ExceptionObject.fromException( exception.__cause__,
+				ignoreJKTypingCheckFunctionSignatureFrames=ignoreJKTypingCheckFunctionSignatureFrames,
+				ignoreJKTestingAssertFrames = ignoreJKTestingAssertFrames,
+				ignoreJKLoggingFrames = ignoreJKLoggingFrames,
+				_bWithFullStackTrace = _bWithFullStackTrace,
+				stackTraceProcessor = stackTraceProcessor,
+				ignoreNestedStopIteration = ignoreNestedStopIteration,
+				ignoreInspectFrames = ignoreInspectFrames,
+				ignoreJKPrettyPrintObjFrames = ignoreJKPrettyPrintObjFrames,
+			)
+		# if _args and isinstance(_args[-1], ExceptionObject):
+		# 	nestedException = _args[-1]
+		# 	_args = _args[:-1]
 
 		if len(_args) == 0:
 			sArgs = ""
@@ -461,34 +584,34 @@ class ExceptionObject(object):
 				# #print("@@wfst@@\t _lines_dedented=", repr(stElement._lines_dedented))
 				# #print("@@wfst@@\t locals=", repr(stElement.locals))
 
-				if ignoreJKTypingCheckFunctionSignatureFrames:
-					if (
-							(stElement.filename.find("jk_typing/checkFunctionSignature.py") >= 0) or
-							(stElement.filename.find("jk_typing\\checkFunctionSignature.py") >= 0)
-						):
-						#print("@@wfst@@\t-- removing frame because of flag ignoreJKTypingCheckFunctionSignatureFrames")
-						continue
-				if ignoreJKTestingAssertFrames:
-					if (
-							(stElement.filename.find("jk_testing/Assert.py") >= 0) or
-							(stElement.filename.find("jk_testing\\Assert.py") >= 0)
-						):
-						#print("@@wfst@@\t-- removing frame because of flag ignoreJKTestingAssertFrames")
-						continue
-				if ignoreJKLoggingFrames:
-					if (
-							(stElement.filename.find("jk_logging/") >= 0) or
-							(stElement.filename.find("jk_logging\\") >= 0)
-						):
-						#print("@@wfst@@\t-- removing frame because of flag ignoreJKLoggingFrames")
-						continue
-				if ignoreInspectFrames:
-					if (
-							(stElement.filename.find("/inspect.py") >= 0) or
-							(stElement.filename.find("\\inspect.py") >= 0)
-						):
-						#print("@@wfst@@\t-- removing frame because of flag ignoreInspectFrames")
-						continue
+				# if ignoreJKTypingCheckFunctionSignatureFrames:
+				# 	if (
+				# 			(stElement.filename.find("jk_typing/checkFunctionSignature.py") >= 0) or
+				# 			(stElement.filename.find("jk_typing\\checkFunctionSignature.py") >= 0)
+				# 		):
+				# 		#print("@@wfst@@\t-- removing frame because of flag ignoreJKTypingCheckFunctionSignatureFrames")
+				# 		continue
+				# if ignoreJKTestingAssertFrames:
+				# 	if (
+				# 			(stElement.filename.find("jk_testing/Assert.py") >= 0) or
+				# 			(stElement.filename.find("jk_testing\\Assert.py") >= 0)
+				# 		):
+				# 		#print("@@wfst@@\t-- removing frame because of flag ignoreJKTestingAssertFrames")
+				# 		continue
+				# if ignoreJKLoggingFrames:
+				# 	if (
+				# 			(stElement.filename.find("jk_logging/") >= 0) or
+				# 			(stElement.filename.find("jk_logging\\") >= 0)
+				# 		):
+				# 		#print("@@wfst@@\t-- removing frame because of flag ignoreJKLoggingFrames")
+				# 		continue
+				# if ignoreInspectFrames:
+				# 	if (
+				# 			(stElement.filename.find("/inspect.py") >= 0) or
+				# 			(stElement.filename.find("\\inspect.py") >= 0)
+				# 		):
+				# 		#print("@@wfst@@\t-- removing frame because of flag ignoreInspectFrames")
+				# 		continue
 				stackTrace2.append(StackTraceItem(
 					stElement.filename,
 					stElement.lineno,
@@ -504,6 +627,17 @@ class ExceptionObject(object):
 		stackTrace.extend(stackTrace1)
 
 		# ----
+
+		if ignoreJKTypingCheckFunctionSignatureFrames or ignoreJKTestingAssertFrames or ignoreJKLoggingFrames or ignoreInspectFrames:
+			stackTrace = ExceptionObject._stackTraceProcessor_default(
+				exception,
+				stackTrace,
+				ignoreJKTypingCheckFunctionSignatureFrames = ignoreJKTypingCheckFunctionSignatureFrames,
+				ignoreJKTestingAssertFrames = ignoreJKTestingAssertFrames,
+				ignoreJKLoggingFrames = ignoreJKLoggingFrames,
+				ignoreInspectFrames = ignoreInspectFrames,
+				ignoreJKPrettyPrintObjFrames = ignoreJKPrettyPrintObjFrames,
+			)
 
 		if stackTraceProcessor:
 			stackTrace = stackTraceProcessor(exception, stackTrace)
@@ -544,9 +678,13 @@ class ExceptionObject(object):
 						ignoreJKLoggingFrames,
 						False,
 						stackTraceProcessor,
+						ignoreNestedStopIteration = ignoreNestedStopIteration,
+						ignoreInspectFrames = ignoreJKLoggingFrames,
+						ignoreJKPrettyPrintObjFrames = ignoreJKPrettyPrintObjFrames,
 					)
 
-		return ExceptionObject(exception, type(exception).__name__, exceptionTextHR, stackTrace, nestedException, extraValues)
+		#return ExceptionObject(exception, type(exception).__name__, exceptionTextHR, stackTrace, nestedException, extraValues)
+		return ExceptionObject(exception, _getFQN(type(exception)), exceptionTextHR, stackTrace, nestedException, extraValues)
 	#
 
 #
